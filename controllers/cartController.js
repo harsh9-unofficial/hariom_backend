@@ -5,11 +5,9 @@ const addToCart = async (req, res) => {
   try {
     const { userId, productId, quantity } = req.body;
     if (!userId || !productId || !quantity) {
-      return res
-        .status(400)
-        .json({
-          message: "Something is missing in userId, productId, or quantity",
-        });
+      return res.status(400).json({
+        message: "Something is missing in userId, productId, or quantity",
+      });
     }
     const existingCartItem = await Cart.findOne({
       where: { userId, productId },
@@ -21,7 +19,6 @@ const addToCart = async (req, res) => {
     }
 
     const newCartItem = await Cart.create({ userId, productId, quantity });
-    console.log("Added to cart");
 
     res
       .status(201)
@@ -30,48 +27,29 @@ const addToCart = async (req, res) => {
     res
       .status(500)
       .json({ message: "Error adding to cart", error: error.message });
-    console.log(error);
   }
 };
 
 const getCart = async (req, res) => {
   try {
     const { userId } = req.params;
-    console.log(req.params);
-
     if (!userId) {
       return res.status(400).json({ message: "UserId is required" });
     }
 
-    console.log("Fetching Cart for User ID:", userId);
     const cartItems = await Cart.findAll({
       where: { userId },
       include: [
         {
           model: Product,
-          attributes: ["name", "price", "description","size"],
+          attributes: ["name", "price", "images"],
         },
-
       ],
     });
-    const formattedCartItems = cartItems.map((item) => {
-      const product = item.product;
-      console.log(product);
-      
-      return {
-        ...item.toJSON(), // Convert Sequelize instance to raw JSON
-        product: {
-          ...product.toJSON(),
-          images: product.images ? product.images.map((img) => img.imageUrl) : [], // Array of image URLs
-        },
-      };
-    });
-    res.status(200).json(formattedCartItems);
+
+    res.status(200).json(cartItems);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error retrieving cart", error: error.message });
-    console.log(error);
+    res.status(500).json({ error: error.message });
   }
 };
 

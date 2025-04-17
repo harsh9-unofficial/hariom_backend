@@ -97,12 +97,12 @@ exports.allProfile = async (req, res) => {
     });
 
     // Check if any users exist
-    if (!users || users.length === 0) {
-      return res.status(404).json({ message: "No users found." });
-    }
+    // if (!users || users.length === 0) {
+    //   return res.status(404).json({ message: "No users found." });
+    // }
 
     // Return the list of users
-    res.status(200).json({ message: "Users retrieved successfully.", users });
+    res.status(200).json( users );
   } catch (error) {
     res
       .status(500)
