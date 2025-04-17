@@ -9,6 +9,7 @@ const contactUsRoutes = require("./routes/contactUsRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
 const productRoutes = require("./routes/productRoutes");
 const ratingRoutes = require("./routes/ratingRoutes");
+const cartRoutes = require("./routes/cartRoutes");
 
 app.use(express.json());
 app.use(cors());

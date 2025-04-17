@@ -53,11 +53,14 @@ const Rating = sequelize.define(
 Rating.belongsTo(Product, { foreignKey: "productId" });
 Product.hasMany(Rating, { foreignKey: "productId" });
 
+Rating.belongsTo(User, { foreignKey: "userId" });
+User.hasMany(Rating, { foreignKey: "userId" });
+
 // Sync Category table first
-Product.sync().then(() => {
-  User.sync().then(() => {
-    Rating.sync();
-  });
-});
+(async () => {
+  await Product.sync();
+  await User.sync();
+  await Rating.sync();
+})();
 
 module.exports = Rating;
