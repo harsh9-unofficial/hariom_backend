@@ -2,11 +2,12 @@ const { DataTypes } = require("sequelize");
 const Sequelize = require("../config/db");
 const User = require("./User");
 const Product = require("./Product");
+const Cart = require("./Cart");
 
 const Wishlist = Sequelize.define(
   "Wishlist",
   {
-    cartId: {
+    id: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true,
@@ -17,14 +18,17 @@ const Wishlist = Sequelize.define(
         model: User,
         key: "id",
       },
+      onDelete: "CASCADE",
+      onUpdate: "CASCADE",
     },
-
     productId: {
       type: DataTypes.INTEGER,
       references: {
         model: Product,
         key: "id",
       },
+      onDelete: "CASCADE",
+      onUpdate: "CASCADE",
     },
   },
   {

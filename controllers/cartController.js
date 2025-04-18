@@ -46,8 +46,20 @@ const getCart = async (req, res) => {
         },
       ],
     });
+    // Parse images if it's a string
+    const parsedCartItems = cartItems.map((item) => ({
+      ...item.toJSON(),
+      // product: {
+      //   name: item.Product.name,
+      //   price: item.Product.price,
+      //   images:
+      //     typeof item.Product.images === "string"
+      //       ? JSON.parse(item.Product.images)
+      //       : item.Product.images,
+      // },
+    }));
 
-    res.status(200).json(cartItems);
+    res.status(200).json(parsedCartItems);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

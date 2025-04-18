@@ -17,8 +17,9 @@ const Cart = Sequelize.define(
         model: User,
         key: "id", // correct, if User uses 'id'
       },
+      onDelete: "CASCADE",
+      onUpdate: "CASCADE",
     },
-
     productId: {
       type: DataTypes.INTEGER,
       references: {

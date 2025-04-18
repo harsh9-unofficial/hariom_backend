@@ -309,7 +309,45 @@ exports.getProducts = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+// Get products for AllProductPage
+exports.getProductsForAllProductPage = async (req, res) => {
+  try {
+    const products = await Product.findAll({
+      attributes: [
+        "id",
+        "name",
+        "price",
+        "images",
+        "categoryId",
+        "averageRatings",
+      ],
+      include: [
+        {
+          model: Category,
+          attributes: ["name"],
+          as: "Category",
+        },
+      ],
+    });
 
+    // Transform the response to match frontend expectations
+    const formattedProducts = products.map((item) => {
+      const productData = item.toJSON();
+      return {
+        ...productData,
+        images:
+          typeof productData.images === "string"
+            ? JSON.parse(productData.images)
+            : productData.images,
+      };
+    });
+
+    res.status(200).json(formattedProducts);
+  } catch (error) {
+    console.error("Error fetching products for AllProductPage:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 // Delete Product
 exports.deleteProduct = async (req, res) => {
   try {
