@@ -11,6 +11,7 @@ const productRoutes = require("./routes/productRoutes");
 const ratingRoutes = require("./routes/ratingRoutes");
 const cartRoutes = require("./routes/cartRoutes");
 const wishlistRoutes = require("./routes/wishlistRoutes");
+const orderRoutes = require("./routes/orderRoutes");
 
 app.use(express.json());
 app.use(cors());
@@ -24,6 +25,7 @@ app.use("/api/products", productRoutes);
 app.use("/api/ratings", ratingRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/wishlist", wishlistRoutes);
+app.use("/api/order", orderRoutes);
 
 // Sync database
 sequelize.sync({ alter: true }).then(() => {
