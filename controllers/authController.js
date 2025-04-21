@@ -64,7 +64,7 @@ exports.login = async (req, res) => {
     }
 
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
-      expiresIn: "12h",
+      expiresIn: "1h",
     });
 
     res.json({ message: "Login successful", userId: user.id, token });
@@ -102,7 +102,7 @@ exports.allProfile = async (req, res) => {
     // }
 
     // Return the list of users
-    res.status(200).json( users );
+    res.status(200).json(users);
   } catch (error) {
     res
       .status(500)

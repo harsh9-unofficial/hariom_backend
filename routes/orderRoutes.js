@@ -5,9 +5,9 @@ const orderControlller = require("../controllers/orderController");
 
 router.post("/create", orderControlller.createOrder);
 router.get("/getall",orderControlller.getAllOrders);
+router.put("/updatestatus/:orderId",orderControlller.updateOrderStatus);
 router.get("/get/:orderId",orderControlller.getOrderById);
 router.get("/getuserorder/:userId",orderControlller.getUserOrders);
-router.put("/updatestatus/:orderId",orderControlller.updateOrderStatus);
 router.put("/cancel/:orderId",orderControlller.cancelOrder);
 
 module.exports = router;
