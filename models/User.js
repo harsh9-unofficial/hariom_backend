@@ -1,5 +1,5 @@
 const { DataTypes } = require("sequelize");
-const sequelize = require("../config/db"); // your sequelize instance
+const sequelize = require("../config/db");
 
 const User = sequelize.define(
   "Users",
@@ -17,22 +17,34 @@ const User = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    phone: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        len: [10, 10], // Ensures exactly 10 characters
+        isNumeric: true, // Ensures only digits
+      },
+    },
     email: {
       type: DataTypes.STRING,
       allowNull: false,
       unique: true,
       validate: {
         isEmail: true,
-      },         
+      },
     },
     password: {
       type: DataTypes.STRING,
       allowNull: false,
     },
+    dob: {
+      type: DataTypes.DATEONLY,
+      allowNull: true,
+    },
   },
   {
-    timestamps: true, // Store createdAt and updatedAt automatically
-    tableName: "users", // Ensure the table name is correct
+    timestamps: true,
+    tableName: "users",
   }
 );
 

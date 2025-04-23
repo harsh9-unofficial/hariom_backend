@@ -4,7 +4,7 @@ const Order = require("./Order");
 const Product = require("./Product");
 
 const OrderItem = Sequelize.define(
-  "OrderItem", // Model name should be capitalized for consistency
+  "OrderItem",
   {
     id: {
       type: DataTypes.INTEGER,
@@ -13,7 +13,7 @@ const OrderItem = Sequelize.define(
     },
     orderId: {
       type: DataTypes.INTEGER,
-      allowNull: false, // Typically, this shouldn't be null
+      allowNull: false,
       references: {
         model: Order,
         key: "id",
@@ -21,7 +21,7 @@ const OrderItem = Sequelize.define(
     },
     productId: {
       type: DataTypes.INTEGER,
-      allowNull: false, // Typically, this shouldn't be null
+      allowNull: false,
       references: {
         model: Product,
         key: "id",
@@ -47,12 +47,16 @@ const OrderItem = Sequelize.define(
 );
 
 // Define associations
-OrderItem.belongsTo(Order, { foreignKey: "orderId" }); // Removed redundant alias
-OrderItem.belongsTo(Product, { foreignKey: "productId" }); // Removed redundant alias
-Order.hasMany(OrderItem, { foreignKey: "orderId" }); // Correct foreign key
-Product.hasMany(OrderItem, { foreignKey: "productId" }); // Fixed foreign key
+OrderItem.belongsTo(Order, { foreignKey: "orderId" });
+OrderItem.belongsTo(Product, { foreignKey: "productId" });
+Order.hasMany(OrderItem, { foreignKey: "orderId" });
+Product.hasMany(OrderItem, { foreignKey: "productId" });
 
-// Optional: Sync the model (remove nested sync unless necessary)
-OrderItem.sync();
+// Sync Category table first
+(async () => {
+  await Product.sync();
+  await Order.sync();
+  await OrderItem.sync();
+})();
 
 module.exports = OrderItem;

@@ -1,7 +1,5 @@
 const express = require("express");
 const router = express.Router();
-const multer = require("multer");
-const path = require("path");
 const productController = require("../controllers/productController");
 const authMiddleware = require("../middleware/authMiddleware");
 const upload = require("../middleware/uploadMiddleware");
@@ -15,6 +13,8 @@ router.post(
 );
 router.get("/", productController.getAllProducts);
 router.get("/all-products", productController.getProductsForAllProductPage);
+router.get("/new-arrivals", productController.getNewArrivals);
+router.get("/best-sellers", productController.getBestSellers);
 router.get("/:id", productController.getProducts);
 router.put(
   "/:id",
@@ -23,5 +23,6 @@ router.put(
   productController.updateProduct
 );
 router.delete("/:id", productController.deleteProduct);
+router.get("/category/:categoryName", productController.getProductsByCategory);
 
 module.exports = router;

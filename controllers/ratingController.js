@@ -7,15 +7,11 @@ const addOrUpdateRating = async (req, res) => {
   const { productId, userId, rating, description } = req.body;
 
   try {
-    console.log("Incoming Data:", req.body);
-
     if (!productId || !userId || !rating || !description) {
-      return res
-        .status(400)
-        .json({
-          message:
-            "Missing required fields (productId, userId, rating, description)",
-        });
+      return res.status(400).json({
+        message:
+          "Missing required fields (productId, userId, rating, description)",
+      });
     }
     if (rating < 0 || rating > 5) {
       return res
@@ -35,10 +31,8 @@ const addOrUpdateRating = async (req, res) => {
         { rating, description },
         { where: { id: existingRating.id } } // Use 'id' as primary key
       );
-      console.log("Rating updated for user:", userId);
     } else {
       await Rating.create({ productId, userId, rating, description });
-      console.log("Rating created for user:", userId);
     }
 
     const ratings = await Rating.findAll({ where: { productId } });
@@ -108,7 +102,10 @@ const deleteReview = async (req, res) => {
       return res.status(400).json({ message: "Invalid review ID" });
     }
 
-    const rating = await Rating.findOne({ where: { id: ratingId }, transaction });
+    const rating = await Rating.findOne({
+      where: { id: ratingId },
+      transaction,
+    });
     if (!rating) {
       await transaction.rollback();
       return res.status(400).json({ message: "Review not found" });
@@ -117,7 +114,9 @@ const deleteReview = async (req, res) => {
     const productId = rating.productId;
     if (!productId) {
       await transaction.rollback();
-      return res.status(400).json({ message: "Invalid product ID associated with review" });
+      return res
+        .status(400)
+        .json({ message: "Invalid product ID associated with review" });
     }
 
     await rating.destroy({ transaction });
@@ -125,7 +124,8 @@ const deleteReview = async (req, res) => {
     const ratings = await Rating.findAll({ where: { productId }, transaction });
     const totalReviews = ratings.length;
     const sumRatings = ratings.reduce((acc, r) => acc + r.rating, 0);
-    const averageRatings = totalReviews > 0 ? Math.round(sumRatings / totalReviews) : 0;
+    const averageRatings =
+      totalReviews > 0 ? Math.round(sumRatings / totalReviews) : 0;
 
     const [updatedRows] = await Product.update(
       { averageRatings, totalReviews },
@@ -137,7 +137,6 @@ const deleteReview = async (req, res) => {
     }
 
     await transaction.commit();
-    console.log(`Review deleted for productId: ${productId}, totalReviews updated to: ${totalReviews}`);
     res.status(200).json({ message: "Review deleted successfully" });
   } catch (error) {
     await transaction.rollback();

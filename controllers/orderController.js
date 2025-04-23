@@ -1,29 +1,19 @@
 const Order = require("../models/Order");
 const OrderItem = require("../models/OrderItem");
-const Cart = require("../models/Cart");
 const Product = require("../models/Product");
 const sequelize = require("../config/db");
-const User = require("../models/User");
-const { Op } = require("sequelize");
 
 const createOrder = async (req, res) => {
-  const transaction = await sequelize.transaction(); // Start a transaction
-
+  const transaction = await sequelize.transaction();
   try {
-    console.log("Incoming Order Payload:", JSON.stringify(req.body, null, 2));
-
     const {
       userId,
       shippingCharge,
       tax,
       totalPrice,
       paymentMethod,
-      formData,
       status,
       orderItems,
-    } = req.body;
-
-    const {
       firstName,
       lastName,
       email,
@@ -33,70 +23,54 @@ const createOrder = async (req, res) => {
       city,
       state,
       postalCode,
-    } = formData || {};
+    } = req.body;
 
-    console.log("Final Extracted Data:", { firstName, email, phone, address });
-
-    // Validate all required fields based on Order model
+    // Validate required fields
     if (
       !userId ||
+      !totalPrice ||
+      !paymentMethod ||
+      !orderItems ||
+      !orderItems.length ||
       !firstName ||
       !lastName ||
       !email ||
       !phone ||
       !address ||
-      !apt ||
       !city ||
       !state ||
-      !postalCode ||
-      !tax ||
-      !totalPrice ||
-      !paymentMethod ||
-      !status ||
-      !orderItems ||
-      !Array.isArray(orderItems) ||
-      orderItems.length === 0
+      !postalCode
     ) {
       await transaction.rollback();
-      return res
-        .status(400)
-        .json({ error: "All required fields must be provided" });
+      return res.status(400).json({ message: "Required fields are missing" });
     }
 
-    // Validate status
-    if (![1, 2, 3, 4, 5].includes(status)) {
-      await transaction.rollback();
-      return res.status(400).json({ error: "Invalid status value" });
+    // Validate and check stock for each order item
+    for (const item of orderItems) {
+      const product = await Product.findByPk(item.productId, { transaction });
+      if (!product) {
+        await transaction.rollback();
+        return res
+          .status(404)
+          .json({ message: `Product with ID ${item.productId} not found` });
+      }
+      if (product.stock < item.quantity) {
+        await transaction.rollback();
+        return res.status(400).json({
+          message: `Insufficient stock for product ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`,
+        });
+      }
     }
 
-    // Validate userId exists
-    const user = await User.findByPk(userId, { transaction });
-    if (!user) {
-      await transaction.rollback();
-      return res
-        .status(400)
-        .json({ error: `User with ID ${userId} not found` });
-    }
-
-    // Validate productIds exist
-    const productIds = orderItems.map((item) => item.productId);
-    const products = await Product.findAll({
-      where: { id: { [Op.in]: productIds } },
-      transaction,
-    });
-    if (products.length !== productIds.length) {
-      await transaction.rollback();
-      return res.status(400).json({ error: "One or more products not found" });
-    }
-
-    // Create order
+    // Create the order
     const order = await Order.create(
       {
         userId,
-        shippingCharge: shippingCharge || 0,
+        shippingCharge,
         tax,
         totalPrice,
         paymentMethod,
+        status,
         firstName,
         lastName,
         email,
@@ -106,54 +80,51 @@ const createOrder = async (req, res) => {
         city,
         state,
         postalCode,
-        status,
       },
       { transaction }
     );
 
-    // Create order items
-    const createdOrderItems = await Promise.all(
-      orderItems.map(async (item) => {
-        console.log("Creating Order Item:", item);
-        if (!item.productId || !item.quantity || !item.price) {
-          throw new Error(`Invalid order item data: ${JSON.stringify(item)}`);
-        }
-        return await OrderItem.create(
-          {
-            orderId: order.id,
-            productId: item.productId,
-            quantity: item.quantity,
-            price: item.price,
-            totalAmount: item.quantity * item.price,
-          },
-          { transaction }
-        );
-      })
-    );
+    // Create order items and deduct stock
+    for (const item of orderItems) {
+      await OrderItem.create(
+        {
+          orderId: order.id,
+          productId: item.productId,
+          quantity: item.quantity,
+          price: item.price,
+          totalAmount: item.quantity * item.price,
+        },
+        { transaction }
+      );
 
-    // Delete user's cart
-    await Cart.destroy({ where: { userId }, transaction });
+      // Deduct stock
+      const product = await Product.findByPk(item.productId, { transaction });
+      await product.update(
+        { stock: product.stock - item.quantity },
+        { transaction }
+      );
+    }
 
-    // Commit transaction if all operations succeed
+    // Commit the transaction
     await transaction.commit();
 
-    return res.status(201).json({
-      message: "Order placed successfully!",
-      order,
-      orderItems: createdOrderItems,
+    res.status(201).json({
+      message: "Order placed successfully",
+      order: {
+        id: order.id,
+        userId: order.userId,
+        shippingCharge: order.shippingCharge,
+        tax: order.tax,
+        totalPrice: order.totalPrice,
+        paymentMethod: order.paymentMethod,
+        status: order.status,
+        orderItems,
+      },
     });
   } catch (error) {
-    // Rollback transaction on error
     await transaction.rollback();
-    console.error("Error in Order Creation:", {
-      message: error.message,
-      stack: error.stack,
-      name: error.name,
-    });
-    return res.status(500).json({
-      error: "Something went wrong",
-      details: error.message,
-    });
+    console.error("Error creating order:", error);
+    res.status(500).json({ message: error.message || "Server error" });
   }
 };
 
@@ -230,7 +201,6 @@ const getAllOrders = async (req, res) => {
 
     return res.status(200).json(processedOrders);
   } catch (error) {
-    console.log("Error fetching orders:", error);
     return res.status(500).json({ error: "Something went wrong" });
   }
 };
@@ -269,7 +239,6 @@ const getUserOrders = async (req, res) => {
 
     return res.status(200).json(processedOrders);
   } catch (error) {
-    console.log("Error fetching user orders:", error);
     return res.status(500).json({ error: "Something went wrong" });
   }
 };
@@ -277,7 +246,6 @@ const getUserOrders = async (req, res) => {
 const updateOrderStatus = async (req, res) => {
   const { orderId } = req.params;
   const { status } = req.body;
-  console.log("body", req.body);
 
   try {
     // Validate status
@@ -322,9 +290,7 @@ const updateOrderStatus = async (req, res) => {
       message: "Order Status Updated Successfully",
       order: processedOrder,
     });
-    console.log("updatedOrder", orderId, processedOrder);
   } catch (error) {
-    console.log(error);
     res.status(500).send({ message: "Error updating order status" });
   }
 };

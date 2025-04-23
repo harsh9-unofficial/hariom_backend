@@ -49,7 +49,7 @@ const Product = sequelize.define(
       },
     },
     howToUse: {
-      type: DataTypes.JSON, // Stores array of strings
+      type: DataTypes.JSON,
       defaultValue: [],
       validate: {
         isArray(value) {
@@ -67,7 +67,7 @@ const Product = sequelize.define(
       },
     },
     features: {
-      type: DataTypes.JSON, // Stores array of strings
+      type: DataTypes.JSON,
       defaultValue: [],
       validate: {
         isArray(value) {
@@ -85,7 +85,7 @@ const Product = sequelize.define(
       },
     },
     images: {
-      type: DataTypes.JSON, // Stores array of image paths
+      type: DataTypes.JSON,
       defaultValue: [],
       validate: {
         isArray(value) {
@@ -122,7 +122,7 @@ const Product = sequelize.define(
       },
     },
     shelfLife: {
-      type: DataTypes.INTEGER, // In months, for example
+      type: DataTypes.INTEGER,
       allowNull: true,
       validate: {
         min: 0,
@@ -144,6 +144,10 @@ const Product = sequelize.define(
       type: DataTypes.FLOAT,
       defaultValue: 0,
     },
+    combos: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
   },
   {
     timestamps: true,
@@ -155,8 +159,9 @@ Product.belongsTo(Category, { foreignKey: "categoryId" });
 Category.hasMany(Product, { foreignKey: "categoryId" });
 
 // Sync Category table first
-Category.sync().then(() => {
-  Product.sync();
-});
+(async () => {
+  await Category.sync();
+  await Product.sync();
+})();
 
 module.exports = Product;

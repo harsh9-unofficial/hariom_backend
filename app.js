@@ -28,7 +28,7 @@ app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/order", orderRoutes);
 
 // Sync database
-sequelize.sync({ alter: true }).then(() => {
+sequelize.sync({ force: false}).then(() => {
   console.log("Database synced");
 });
 

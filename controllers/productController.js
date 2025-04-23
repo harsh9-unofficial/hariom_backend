@@ -2,6 +2,8 @@ const Product = require("../models/Product");
 const Category = require("../models/Category");
 const path = require("path");
 const fs = require("fs");
+const OrderItem = require("../models/OrderItem");
+const sequelize = require("../config/db");
 
 // Create Product
 exports.createProduct = async (req, res) => {
@@ -23,6 +25,7 @@ exports.createProduct = async (req, res) => {
       shelfLife,
       madeIn,
       packaging,
+      combos,
     } = req.body;
 
     // Validate required fields
@@ -38,7 +41,7 @@ exports.createProduct = async (req, res) => {
       return res.status(400).json({ message: "Required fields are missing" });
     }
 
-    // Parse features (comes as JSON string from frontend)
+    // Parse features
     let parsedFeatures = [];
     try {
       parsedFeatures = JSON.parse(features);
@@ -49,7 +52,7 @@ exports.createProduct = async (req, res) => {
       return res.status(400).json({ message: "Invalid features format" });
     }
 
-    // Parse howToUse (comes as JSON string from frontend)
+    // Parse howToUse
     let parsedHowToUse = [];
     try {
       parsedHowToUse = JSON.parse(howToUse);
@@ -91,6 +94,9 @@ exports.createProduct = async (req, res) => {
       return res.status(400).json({ message: "Shelf Life cannot be negative" });
     }
 
+    // Convert combos to boolean
+    const parsedCombos = combos === "true" || combos === true;
+
     // Create product
     const product = await Product.create({
       name,
@@ -110,8 +116,9 @@ exports.createProduct = async (req, res) => {
       shelfLife: parsedShelfLife,
       madeIn,
       packaging,
-      averageRatings: 0, // Default value as per model
-      totalReviews: 0, // Default value as per model
+      averageRatings: 0,
+      totalReviews: 0,
+      combos: parsedCombos,
     });
 
     res.status(201).json({ message: "Product created", product });
@@ -142,6 +149,7 @@ exports.updateProduct = async (req, res) => {
       shelfLife,
       madeIn,
       packaging,
+      combos,
     } = req.body;
 
     const product = await Product.findByPk(id);
@@ -175,10 +183,9 @@ exports.updateProduct = async (req, res) => {
       }
     }
 
-    // Handle images (keep existing if no new ones uploaded)
+    // Handle images
     let imagePaths = product.images;
     if (req.files && req.files.length > 0) {
-      // Delete old images from filesystem
       if (Array.isArray(product.images)) {
         product.images.forEach((imagePath) => {
           const fullPath = path.join(__dirname, "../", imagePath);
@@ -187,7 +194,6 @@ exports.updateProduct = async (req, res) => {
           }
         });
       }
-      // Add new images
       imagePaths = req.files.map((file) =>
         path.join("uploads", file.filename).replace(/\\/g, "/")
       );
@@ -222,6 +228,12 @@ exports.updateProduct = async (req, res) => {
       return res.status(400).json({ message: "Shelf Life cannot be negative" });
     }
 
+    // Convert combos to boolean
+    const parsedCombos =
+      combos !== undefined
+        ? combos === "true" || combos === true
+        : product.combos;
+
     // Update product
     await product.update({
       name: name || product.name,
@@ -241,6 +253,7 @@ exports.updateProduct = async (req, res) => {
       shelfLife: parsedShelfLife,
       madeIn: madeIn || product.madeIn,
       packaging: packaging || product.packaging,
+      combos: parsedCombos,
     });
 
     res.status(200).json({ message: "Product updated", product });
@@ -286,6 +299,7 @@ exports.getAllProducts = async (req, res) => {
       packaging: product.packaging,
       averageRatings: product.averageRatings,
       totalReviews: product.totalReviews,
+      combos: product.combos,
     }));
 
     res.status(200).json(formattedProducts);
@@ -295,6 +309,7 @@ exports.getAllProducts = async (req, res) => {
   }
 };
 
+// Get single product by ID
 exports.getProducts = async (req, res) => {
   try {
     const id = req.params.id;
@@ -309,6 +324,7 @@ exports.getProducts = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 // Get products for AllProductPage
 exports.getProductsForAllProductPage = async (req, res) => {
   try {
@@ -320,6 +336,7 @@ exports.getProductsForAllProductPage = async (req, res) => {
         "images",
         "categoryId",
         "averageRatings",
+        "combos",
       ],
       include: [
         {
@@ -348,6 +365,52 @@ exports.getProductsForAllProductPage = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+// Get new arrivals (sorted by createdAt, limited to 4)
+exports.getNewArrivals = async (req, res) => {
+  try {
+    const products = await Product.findAll({
+      attributes: [
+        "id",
+        "name",
+        "price",
+        "images",
+        "categoryId",
+        "averageRatings",
+        "combos",
+        "createdAt",
+      ],
+      include: [
+        {
+          model: Category,
+          attributes: ["name"],
+          as: "Category",
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+      limit: 4,
+    });
+
+    // Transform the response to match frontend expectations
+    const formattedProducts = products.map((item) => {
+      const productData = item.toJSON();
+      return {
+        ...productData,
+        images:
+          typeof productData.images === "string"
+            ? JSON.parse(productData.images)
+            : productData.images,
+        category: productData.Category ? productData.Category.name : "-",
+      };
+    });
+
+    res.status(200).json(formattedProducts);
+  } catch (error) {
+    console.error("Error fetching new arrivals:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 // Delete Product
 exports.deleteProduct = async (req, res) => {
   try {
@@ -391,5 +454,127 @@ exports.deleteProduct = async (req, res) => {
   } catch (error) {
     console.error("Error deleting product:", error);
     res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+
+exports.getProductsByCategory = async (req, res) => {
+  try {
+    const { categoryName } = req.params;
+
+    // Find category by name (case-insensitive)
+    const category = await Category.findOne({
+      where: {
+        name: categoryName,
+      },
+    });
+
+    if (!category) {
+      return res.status(404).json({ message: "Category not found" });
+    }
+
+    // Fetch products for the category
+    const products = await Product.findAll({
+      where: { categoryId: category.id },
+      attributes: [
+        "id",
+        "name",
+        "price",
+        "images",
+        "categoryId",
+        "averageRatings",
+        "combos",
+      ],
+      include: [
+        {
+          model: Category,
+          attributes: ["name"],
+          as: "Category",
+        },
+      ],
+    });
+
+    // Transform the response
+    const formattedProducts = products.map((item) => {
+      const productData = item.toJSON();
+      return {
+        ...productData,
+        images:
+          typeof productData.images === "string"
+            ? JSON.parse(productData.images)
+            : productData.images,
+        category: productData.Category ? productData.Category.name : "-",
+      };
+    });
+
+    res.status(200).json(formattedProducts);
+  } catch (error) {
+    console.error("Error fetching products by category:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// controllers/productController.js
+exports.getBestSellers = async (req, res) => {
+  try {
+    const bestSellers = await Product.findAll({
+      attributes: [
+        "id",
+        "name",
+        "price",
+        "images",
+        "categoryId",
+        "averageRatings",
+        "combos",
+      ],
+      include: [
+        {
+          model: Category,
+          attributes: ["name"],
+          as: "Category",
+        },
+        {
+          model: OrderItem,
+          attributes: [],
+          as: "OrderItems",
+          required: true,
+        },
+      ],
+      group: ["Product.id", "Category.id"],
+      order: [
+        [sequelize.fn("SUM", sequelize.col("OrderItems.quantity")), "DESC"],
+      ],
+      limit: 4,
+      raw: true,
+      subQuery: false,
+    });
+
+    // Transform the response to match frontend expectations
+    const formattedProducts = bestSellers.map((item) => {
+      // Parse images if it's a string
+      let parsedImages = item.images;
+      if (typeof item.images === "string") {
+        try {
+          parsedImages = JSON.parse(item.images);
+        } catch (e) {
+          console.error("Error parsing images:", e);
+          parsedImages = [];
+        }
+      }
+
+      return {
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        image: parsedImages && parsedImages.length > 0 ? parsedImages[0] : "", // Use first image
+        category: item["Category.name"] || "-",
+        averageRatings: item.averageRatings,
+        combos: item.combos,
+      };
+    });
+
+    res.status(200).json(formattedProducts);
+  } catch (error) {
+    console.error("Error fetching best sellers:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };

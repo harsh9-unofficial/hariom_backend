@@ -12,4 +12,6 @@ router.get("/profile", authMiddleware, authController.allProfile);
 
 router.delete("/:id", authMiddleware, authController.deleteAccount);
 
+router.patch("/profile/:id", authMiddleware, authController.updateProfile);
+
 module.exports = router;
